@@ -132,7 +132,7 @@ CREATE POLICY "Users can delete cards from their lists" ON cards
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
+    NEW.updated_at = NOW(); -- Automatically set current timestamp
     RETURN NEW;
 END;
 $$ language 'plpgsql';

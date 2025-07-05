@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Database } from '@/lib/supabase'
 
+// 🎯 TypeScript Integration (Feature #4: Auto-generated APIs)
 type Board = Database['public']['Tables']['boards']['Row']
 type List = Database['public']['Tables']['lists']['Row']
 type Card = Database['public']['Tables']['cards']['Row']
@@ -18,37 +19,215 @@ interface KanbanData {
 }
 
 export default function KanbanBoard() {
+  // 🔐 FEATURE #1: Authentication (using AuthContext)
   const { user, signOut } = useAuth()
+  
+  // 📊 State Management
   const [data, setData] = useState<KanbanData>({ boards: [], lists: [], cards: [] })
   const [currentBoard, setCurrentBoard] = useState<Board | null>(null)
   const [loading, setLoading] = useState(true)
   const [newCardTitles, setNewCardTitles] = useState<{[listId: string]: string}>({})
   const [newListTitle, setNewListTitle] = useState('')
+  
+  // 🎉 Notification State (Feature #6: Edge Functions)
+  const [notification, setNotification] = useState<{
+    show: boolean
+    message: string
+    type: 'success' | 'error'
+  }>({ show: false, message: '', type: 'success' })
 
+  // 🚀 Initialize App: Data + Real-time
   useEffect(() => {
     if (user) {
       fetchData()
-      const cleanup = setupRealtimeSubscriptions()
+      
+      // STEP 1: Start listening to database changes
+      const cleanup = setupRealtimeSubscriptions() // Feature #3: Real-time
+      
+      // STEP 2: Return cleanup function - React will call this when:
+      // - Component unmounts (user navigates away)
+      // - Dependencies change (user logs out)
+      // - Component re-renders and needs to cleanup old subscriptions
       return cleanup
+      
+      // ❌ WITHOUT CLEANUP: 
+      // - WebSocket connections stay open forever
+      // - Multiple subscriptions pile up
+      // - Memory leaks and performance issues
+      // - App becomes slow and buggy
     }
-  }, [user])
+  }, [user]) // When 'user' changes, cleanup old subscription and start new one
+
+  // ===============================================
+  // 🎯 FEATURE #3: REAL-TIME SUBSCRIPTIONS
+  // ===============================================
+  
+  const setupRealtimeSubscriptions = () => {
+    console.log('🔄 Setting up real-time subscriptions...')
+    
+    // CREATE: Open WebSocket connection to Supabase
+    const subscription = supabase
+      .channel('kanban-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'boards' 
+      }, (payload) => {
+        console.log('📋 Board updated in real-time:', payload)
+        fetchData()
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'lists' 
+      }, (payload) => {
+        console.log('📝 List updated in real-time:', payload)
+        fetchData()
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'cards' 
+      }, (payload) => {
+        console.log('🎴 Card updated in real-time:', payload)
+        // Small delay to avoid conflicts with optimistic updates
+        setTimeout(() => fetchData(), 100)
+      })
+      .subscribe() // 🔌 This opens the WebSocket connection
+
+    // RETURN: A function that closes the WebSocket connection
+    // React will call this function when cleanup is needed
+    return () => {
+      console.log('🧹 Cleaning up real-time subscriptions')
+      subscription.unsubscribe() // 🔌 This closes the WebSocket connection
+    }
+    
+    // 💡 EXPLANATION:
+    // 1. We create a subscription (opens WebSocket)
+    // 2. We return a function that unsubscribes (closes WebSocket) 
+    // 3. React automatically calls our returned function when needed
+    // 4. This prevents memory leaks and multiple connections
+  }
+
+  // ===============================================
+  // 🎯 FEATURE #4: AUTO-GENERATED REST APIs (READ)
+  // ===============================================
+  
+  const fetchData = async () => {
+    try {
+      console.log('📥 Fetching data with Supabase auto-generated APIs...')
+      
+      // READ: Get all boards for current user (RLS automatically filters)
+      const { data: boards, error: boardsError } = await supabase
+        .from('boards')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (boardsError) throw boardsError
+
+      // If no boards exist, create sample data
+      if (!boards || boards.length === 0) {
+        await createSampleData()
+        return
+      }
+
+      // Get the first board
+      const firstBoard = boards[0]
+      setCurrentBoard(firstBoard)
+      
+      // READ: Get lists for this board
+      const { data: lists, error: listsError } = await supabase
+        .from('lists')
+        .select('*')
+        .eq('board_id', firstBoard.id)
+        .order('position', { ascending: true })
+
+      if (listsError) throw listsError
+
+      // READ: Get cards for these lists
+      const { data: cards, error: cardsError } = await supabase
+        .from('cards')
+        .select('*')
+        .in('list_id', lists.map(list => list.id))
+        .order('position', { ascending: true })
+
+      if (cardsError) throw cardsError
+
+      setData({ boards: boards || [], lists: lists || [], cards: cards || [] })
+      console.log('✅ Data fetched successfully!')
+      
+    } catch (error) {
+      console.error('❌ Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ===============================================
+  // 🎯 FEATURE #6: EDGE FUNCTIONS (Serverless)
+  // ===============================================
+  
+  const triggerCompletionNotification = async ({ cardId, cardTitle, listTitle, userEmail }: {
+    cardId: string
+    cardTitle: string  
+    listTitle: string
+    userEmail: string
+  }) => {
+    try {
+      console.log('🚀 Calling edge function for task completion...')
+      
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('task-completion-notification', {
+        body: { cardId, cardTitle, listTitle, userEmail }
+      })
+
+      if (error) {
+        console.error('❌ Edge function error:', error)
+        showNotification(`Failed to send notification: ${error.message}`, 'error')
+        return
+      }
+
+      if (data?.success) {
+        console.log('🎉 Notification sent:', data.message)
+        showNotification(`🎉 Notification sent for "${cardTitle}"!`, 'success')
+      }
+    } catch (error) {
+      console.error('❌ Error calling edge function:', error)
+      showNotification('Failed to send notification', 'error')
+    }
+  }
+
+  // 🎉 Show UI notification
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ show: true, message, type })
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setNotification({ show: false, message: '', type: 'success' })
+    }, 3000)
+  }
+
+  // ===============================================
+  // 🎯 FEATURE #4: AUTO-GENERATED REST APIs (CREATE)
+  // ===============================================
 
   const createSampleData = async () => {
     try {
-      // Create sample board
+      console.log('🌱 Creating sample data for new user...')
+      
+      // CREATE: New board
       const { data: board, error: boardError } = await supabase
         .from('boards')
         .insert({
           title: 'My First Board',
           description: 'A sample Kanban board to get you started',
-          user_id: user?.id
+          user_id: user?.id // RLS ensures only this user can see it
         })
         .select()
         .single()
 
       if (boardError) throw boardError
 
-      // Create sample lists
+      // CREATE: Sample lists
       const { data: lists, error: listsError } = await supabase
         .from('lists')
         .insert([
@@ -60,12 +239,12 @@ export default function KanbanBoard() {
 
       if (listsError) throw listsError
 
-      // Create sample cards
+      // CREATE: Sample cards
       const todoListId = lists.find(list => list.title === 'To Do')?.id
       const inProgressListId = lists.find(list => list.title === 'In Progress')?.id
 
       if (todoListId && inProgressListId) {
-        const { error: cardsError } = await supabase
+        await supabase
           .from('cards')
           .insert([
             {
@@ -87,242 +266,12 @@ export default function KanbanBoard() {
               position: 1
             }
           ])
-
-        if (cardsError) throw cardsError
       }
 
-      // Return the created board to continue processing
-      return board
+      console.log('✅ Sample data created!')
+      fetchData() // Refresh data
     } catch (error) {
-      console.error('Error creating sample data:', error)
-      return null
-    }
-  }
-
-  const fetchData = async () => {
-    try {
-      // Fetch boards
-      const { data: boards, error: boardsError } = await supabase
-        .from('boards')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (boardsError) throw boardsError
-
-      // If user has no boards, create sample data
-      if (!boards || boards.length === 0) {
-        const newBoard = await createSampleData()
-        if (!newBoard) return
-        
-        // Fetch again after creating sample data
-        const { data: updatedBoards, error: updatedBoardsError } = await supabase
-          .from('boards')
-          .select('*')
-          .order('created_at', { ascending: false })
-        
-        if (updatedBoardsError) throw updatedBoardsError
-        
-        // Use the updated boards data
-        const firstBoard = updatedBoards[0]
-        if (firstBoard) {
-          setCurrentBoard(firstBoard)
-          
-          const { data: lists, error: listsError } = await supabase
-            .from('lists')
-            .select('*')
-            .eq('board_id', firstBoard.id)
-            .order('position', { ascending: true })
-
-          if (listsError) throw listsError
-
-          const { data: cards, error: cardsError } = await supabase
-            .from('cards')
-            .select('*')
-            .in('list_id', lists.map(list => list.id))
-            .order('position', { ascending: true })
-
-          if (cardsError) throw cardsError
-
-          setData({ boards: updatedBoards || [], lists: lists || [], cards: cards || [] })
-        }
-        return
-      }
-
-      // Fetch lists for the first board
-      const firstBoard = boards[0]
-      if (firstBoard) {
-        setCurrentBoard(firstBoard)
-        
-        const { data: lists, error: listsError } = await supabase
-          .from('lists')
-          .select('*')
-          .eq('board_id', firstBoard.id)
-          .order('position', { ascending: true })
-
-        if (listsError) throw listsError
-
-        // Fetch cards for these lists
-        const { data: cards, error: cardsError } = await supabase
-          .from('cards')
-          .select('*')
-          .in('list_id', lists.map(list => list.id))
-          .order('position', { ascending: true })
-
-        if (cardsError) throw cardsError
-
-        setData({ boards: boards || [], lists: lists || [], cards: cards || [] })
-      } else {
-        setData({ boards: boards || [], lists: [], cards: [] })
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const setupRealtimeSubscriptions = () => {
-    // Subscribe to all tables for real-time updates
-    const subscription = supabase
-      .channel('kanban-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, (payload) => {
-        console.log('Board change:', payload)
-        fetchData()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lists' }, (payload) => {
-        console.log('List change:', payload)
-        fetchData()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, (payload) => {
-        console.log('Card change:', payload)
-        // Small delay to avoid conflicts with optimistic updates
-        setTimeout(() => {
-          fetchData()
-        }, 100)
-      })
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }
-
-  const handleDragEnd = async (result: any) => {
-    if (!result.destination) return
-
-    const { source, destination, draggableId } = result
-
-    // Don't do anything if dropped in the same position
-    if (source.droppableId === destination.droppableId && source.index === destination.index) {
-      return
-    }
-
-    const cardId = draggableId
-    const sourceListId = source.droppableId
-    const destinationListId = destination.droppableId
-    const newPosition = destination.index
-
-    // Optimistic update - update local state immediately
-    setData(prevData => {
-      const newData = { ...prevData }
-      const cardToMove = newData.cards.find(card => card.id === cardId)
-      
-      if (!cardToMove) return prevData
-
-      // Remove card from source position
-      const sourceCards = newData.cards.filter(card => 
-        card.list_id === sourceListId && card.id !== cardId
-      ).sort((a, b) => a.position - b.position)
-
-      // Update positions of remaining cards in source list
-      sourceCards.forEach((card, index) => {
-        card.position = index
-      })
-
-      // Update the moved card
-      cardToMove.list_id = destinationListId
-      cardToMove.position = newPosition
-
-      // Get cards in destination list (excluding the moved card if it was in the same list)
-      const destinationCards = newData.cards.filter(card => 
-        card.list_id === destinationListId && card.id !== cardId
-      ).sort((a, b) => a.position - b.position)
-
-      // Insert the moved card at the new position
-      destinationCards.splice(newPosition, 0, cardToMove)
-
-      // Update positions of all cards in destination list
-      destinationCards.forEach((card, index) => {
-        card.position = index
-      })
-
-      // Rebuild the cards array
-      const otherCards = newData.cards.filter(card => 
-        card.list_id !== sourceListId && card.list_id !== destinationListId
-      )
-
-      newData.cards = [...otherCards, ...sourceCards, ...destinationCards]
-
-      return newData
-    })
-
-    // Update database in the background
-    try {
-      if (sourceListId !== destinationListId) {
-        // Moving card between lists
-        const { error } = await supabase
-          .from('cards')
-          .update({ list_id: destinationListId, position: newPosition })
-          .eq('id', cardId)
-
-        if (error) throw error
-
-        // Update positions of all affected cards
-        const sourceCards = data.cards.filter(card => 
-          card.list_id === sourceListId && card.id !== cardId
-        )
-        const destinationCards = data.cards.filter(card => 
-          card.list_id === destinationListId && card.id !== cardId
-        )
-
-        // Update source list positions
-        for (let i = 0; i < sourceCards.length; i++) {
-          await supabase
-            .from('cards')
-            .update({ position: i })
-            .eq('id', sourceCards[i].id)
-        }
-
-        // Update destination list positions
-        for (let i = 0; i < destinationCards.length; i++) {
-          const adjustedPosition = i >= newPosition ? i + 1 : i
-          await supabase
-            .from('cards')
-            .update({ position: adjustedPosition })
-            .eq('id', destinationCards[i].id)
-        }
-      } else {
-        // Reordering within the same list
-        const listCards = data.cards.filter(card => card.list_id === sourceListId)
-        const sortedCards = listCards.sort((a, b) => a.position - b.position)
-        
-        // Remove the dragged card and insert it at the new position
-        const draggedCard = sortedCards.find(card => card.id === cardId)
-        const filteredCards = sortedCards.filter(card => card.id !== cardId)
-        filteredCards.splice(newPosition, 0, draggedCard!)
-
-        // Update positions for all cards in the list
-        for (let i = 0; i < filteredCards.length; i++) {
-          await supabase
-            .from('cards')
-            .update({ position: i })
-            .eq('id', filteredCards[i].id)
-        }
-      }
-    } catch (error) {
-      console.error('Error updating card position:', error)
-      // On error, refresh data to get the correct state
-      fetchData()
+      console.error('❌ Error creating sample data:', error)
     }
   }
 
@@ -330,8 +279,11 @@ export default function KanbanBoard() {
     const cardTitle = newCardTitles[listId]?.trim()
     if (!cardTitle) return
 
+    console.log('➕ Adding new card:', cardTitle)
+
+    // Optimistic Update: Update UI immediately
     const tempId = `temp-${Date.now()}`
-    const newCard = {
+    const optimisticCard = {
       id: tempId,
       title: cardTitle,
       description: null,
@@ -341,58 +293,55 @@ export default function KanbanBoard() {
       updated_at: new Date().toISOString()
     }
 
-    // Optimistic update
     setData(prevData => ({
       ...prevData,
-      cards: [...prevData.cards, newCard]
+      cards: [...prevData.cards, optimisticCard]
     }))
 
-    // Clear the input for this specific list
-    setNewCardTitles(prev => ({
-      ...prev,
-      [listId]: ''
-    }))
+    setNewCardTitles(prev => ({ ...prev, [listId]: '' }))
 
     try {
+      // CREATE: Save to database
       const { data: insertedCard, error } = await supabase
         .from('cards')
         .insert({
           title: cardTitle,
           list_id: listId,
-          position: newCard.position
+          position: optimisticCard.position
         })
         .select()
         .single()
 
       if (error) throw error
 
-      // Replace temp card with real card
+      // Replace optimistic card with real card
       setData(prevData => ({
         ...prevData,
         cards: prevData.cards.map(card => 
           card.id === tempId ? insertedCard : card
         )
       }))
+
+      console.log('✅ Card added successfully!')
     } catch (error) {
-      console.error('Error adding card:', error)
-      // Remove optimistic card on error
+      console.error('❌ Error adding card:', error)
+      // Rollback optimistic update
       setData(prevData => ({
         ...prevData,
         cards: prevData.cards.filter(card => card.id !== tempId)
       }))
-      // Restore the text for this specific list
-      setNewCardTitles(prev => ({
-        ...prev,
-        [listId]: cardTitle
-      }))
+      setNewCardTitles(prev => ({ ...prev, [listId]: cardTitle }))
     }
   }
 
   const addList = async () => {
     if (!newListTitle.trim() || !currentBoard) return
 
+    console.log('📝 Adding new list:', newListTitle)
+
+    // Optimistic Update
     const tempId = `temp-${Date.now()}`
-    const newList = {
+    const optimisticList = {
       id: tempId,
       title: newListTitle,
       board_id: currentBoard.id,
@@ -401,73 +350,192 @@ export default function KanbanBoard() {
       updated_at: new Date().toISOString()
     }
 
-    // Optimistic update
     setData(prevData => ({
       ...prevData,
-      lists: [...prevData.lists, newList]
+      lists: [...prevData.lists, optimisticList]
     }))
 
     const listTitle = newListTitle
     setNewListTitle('')
 
     try {
+      // CREATE: Save to database
       const { data: insertedList, error } = await supabase
         .from('lists')
         .insert({
           title: listTitle,
           board_id: currentBoard.id,
-          position: newList.position
+          position: optimisticList.position
         })
         .select()
         .single()
 
       if (error) throw error
 
-      // Replace temp list with real list
+      // Replace optimistic list with real list
       setData(prevData => ({
         ...prevData,
         lists: prevData.lists.map(list => 
           list.id === tempId ? insertedList : list
         )
       }))
+
+      console.log('✅ List added successfully!')
     } catch (error) {
-      console.error('Error adding list:', error)
-      // Remove optimistic list on error
+      console.error('❌ Error adding list:', error)
+      // Rollback
       setData(prevData => ({
         ...prevData,
         lists: prevData.lists.filter(list => list.id !== tempId)
       }))
-      setNewListTitle(listTitle) // Restore the text
+      setNewListTitle(listTitle)
     }
   }
 
+  // ===============================================
+  // 🎯 FEATURE #4: AUTO-GENERATED REST APIs (UPDATE)
+  // ===============================================
+
+  const handleDragEnd = async (result: any) => {
+    if (!result.destination) return
+
+    const { source, destination, draggableId } = result
+
+    // Don't do anything if dropped in same position
+    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+      return
+    }
+
+    console.log('🎯 Updating card position with drag & drop...')
+
+    const cardId = draggableId
+    const sourceListId = source.droppableId
+    const destinationListId = destination.droppableId
+    const newPosition = destination.index
+
+    // Optimistic Update: Update UI immediately for smooth UX
+    setData(prevData => {
+      const newData = { ...prevData }
+      const cardToMove = newData.cards.find(card => card.id === cardId)
+      
+      if (!cardToMove) return prevData
+
+      // Complex position calculation logic...
+      const sourceCards = newData.cards.filter(card => 
+        card.list_id === sourceListId && card.id !== cardId
+      ).sort((a, b) => a.position - b.position)
+
+      sourceCards.forEach((card, index) => {
+        card.position = index
+      })
+
+      cardToMove.list_id = destinationListId
+      cardToMove.position = newPosition
+
+      const destinationCards = newData.cards.filter(card => 
+        card.list_id === destinationListId && card.id !== cardId
+      ).sort((a, b) => a.position - b.position)
+
+      destinationCards.splice(newPosition, 0, cardToMove)
+      destinationCards.forEach((card, index) => {
+        card.position = index
+      })
+
+      const otherCards = newData.cards.filter(card => 
+        card.list_id !== sourceListId && card.list_id !== destinationListId
+      )
+
+      newData.cards = [...otherCards, ...sourceCards, ...destinationCards]
+      return newData
+    })
+
+    try {
+      // UPDATE: Save new position to database
+      const { error } = await supabase
+        .from('cards')
+        .update({ 
+          list_id: destinationListId, 
+          position: newPosition 
+        })
+        .eq('id', cardId)
+
+      if (error) throw error
+
+      console.log('✅ Card position updated!')
+
+      // 🎯 FEATURE #6: EDGE FUNCTIONS (Serverless)
+      // Check if card was moved to "Done" and trigger notification
+      const destinationList = data.lists.find(list => list.id === destinationListId)
+      const movedCard = data.cards.find(card => card.id === cardId)
+      
+      if (destinationList && movedCard && user) {
+        // 🎉 Only celebrate when moved to "Done"!
+        if (destinationList.title === 'Done') {
+          const isEdgeFunctionEnabled = true // Set to false to disable
+          
+          if (isEdgeFunctionEnabled) {
+            await triggerCompletionNotification({
+              cardId: movedCard.id,
+              cardTitle: movedCard.title,
+              listTitle: destinationList.title,
+              userEmail: user.email || 'user@example.com'
+            })
+          } else {
+            // Demo simulation for local development
+            console.log('🎉 DEMO: Task completed notification would be sent!')
+            console.log(`📧 Email would be sent to: ${user.email}`)
+            console.log(`✅ Task: "${movedCard.title}"`)
+            showNotification(`🎉 DEMO: Notification sent for "${movedCard.title}"!`, 'success')
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Error updating card position:', error)
+      fetchData() // Refresh on error
+    }
+  }
+
+  // ===============================================
+  // 🎯 FEATURE #4: AUTO-GENERATED REST APIs (DELETE)
+  // ===============================================
+
   const deleteCard = async (cardId: string) => {
-    // Store the card for potential restoration
+    console.log('🗑️ Deleting card...')
+    
+    // Store for potential rollback
     const cardToDelete = data.cards.find(card => card.id === cardId)
     if (!cardToDelete) return
 
-    // Optimistic update - remove immediately
+    // Optimistic Update: Remove immediately
     setData(prevData => ({
       ...prevData,
       cards: prevData.cards.filter(card => card.id !== cardId)
     }))
 
     try {
+      // DELETE: Remove from database
       const { error } = await supabase
         .from('cards')
         .delete()
         .eq('id', cardId)
 
       if (error) throw error
+
+      console.log('✅ Card deleted successfully!')
     } catch (error) {
-      console.error('Error deleting card:', error)
-      // Restore card on error
+      console.error('❌ Error deleting card:', error)
+      // Rollback: Restore card
       setData(prevData => ({
         ...prevData,
         cards: [...prevData.cards, cardToDelete].sort((a, b) => a.position - b.position)
       }))
     }
   }
+
+  // ===============================================
+  // 🎨 UI COMPONENTS
+  // ===============================================
 
   if (loading) {
     return (
@@ -482,7 +550,7 @@ export default function KanbanBoard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
+      {/* Header with User Info (Feature #1: Authentication) */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -512,10 +580,11 @@ export default function KanbanBoard() {
         </div>
       </header>
 
-      {/* Board */}
+      {/* Main Kanban Board */}
       <div className="p-6">
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-6 overflow-x-auto">
+            {/* Render Each List */}
             {data.lists.map((list) => (
               <div key={list.id} className="flex-shrink-0 w-72">
                 <div className="bg-white rounded-lg shadow-sm border">
@@ -528,6 +597,7 @@ export default function KanbanBoard() {
                     </div>
                   </div>
                   
+                  {/* Droppable area for cards */}
                   <Droppable droppableId={list.id}>
                     {(provided, snapshot) => (
                       <div
@@ -537,14 +607,11 @@ export default function KanbanBoard() {
                           snapshot.isDraggingOver ? 'bg-blue-50' : ''
                         }`}
                       >
+                        {/* Render Cards */}
                         {data.cards
                           .filter(card => card.list_id === list.id)
                           .map((card, index) => (
-                            <Draggable
-                              key={card.id}
-                              draggableId={card.id}
-                              index={index}
-                            >
+                            <Draggable key={card.id} draggableId={card.id} index={index}>
                               {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
@@ -583,7 +650,7 @@ export default function KanbanBoard() {
                           ))}
                         {provided.placeholder}
                         
-                        {/* Add card form */}
+                        {/* Add Card Form */}
                         <div className="mt-3">
                           <input
                             type="text"
@@ -623,7 +690,7 @@ export default function KanbanBoard() {
               </div>
             ))}
             
-            {/* Add List */}
+            {/* Add New List */}
             <div className="flex-shrink-0 w-72">
               <div className="bg-white rounded-lg shadow-sm border p-4">
                 <input
@@ -655,6 +722,34 @@ export default function KanbanBoard() {
           </div>
         </DragDropContext>
       </div>
+
+      {/* 🎉 Notification Toast (Feature #6: Edge Functions) */}
+      {notification.show && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top duration-300">
+          <div className={`px-6 py-4 rounded-lg shadow-lg border max-w-md ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full ${
+                notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+              }`} />
+              <p className="font-medium text-sm">{notification.message}</p>
+              <button
+                onClick={() => setNotification({ show: false, message: '', type: 'success' })}
+                className={`ml-auto text-lg leading-none ${
+                  notification.type === 'success' 
+                    ? 'text-green-600 hover:text-green-800'
+                    : 'text-red-600 hover:text-red-800'
+                }`}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

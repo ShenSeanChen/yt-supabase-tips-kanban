@@ -1,8 +1,8 @@
 # 🚀 Kanban Pro - Supabase Features Demo
 
-A modern Kanban board built with **Next.js 15** and **Supabase** that showcases the **TOP 5 SUPABASE FEATURES** every developer should know!
+A modern Kanban board built with **Next.js 15** and **Supabase** that showcases the **TOP 6 SUPABASE FEATURES** every developer should know!
 
-## 🎯 Top 5 Supabase Features Demonstrated
+## 🎯 Top 6 Supabase Features Demonstrated
 
 ### 1. **🔐 Authentication with OAuth**
 - **Google OAuth** integration
@@ -33,6 +33,12 @@ A modern Kanban board built with **Next.js 15** and **Supabase** that showcases 
 - Data validation at database level
 - Custom business logic in PostgreSQL
 - **Code Location**: `database.sql` (update_updated_at_column function)
+
+### 6. **🚀 Edge Functions (Serverless)**
+- Custom server-side logic without managing servers
+- Automatic notifications when tasks are completed
+- External API integrations (email, Slack, webhooks)
+- **Code Location**: `supabase/functions/task-completion-notification/`, `src/components/KanbanBoard.tsx` (triggerCompletionNotification)
 
 ## 🛠️ Tech Stack
 
@@ -107,12 +113,35 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 2. Add Google as a provider
 3. Configure OAuth settings
 
-### 5. Run the development server
+### 5. Deploy the Edge Function (Optional)
+To enable task completion notifications:
+
+\`\`\`bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login to Supabase
+supabase login
+
+# Link to your project
+supabase link --project-ref your-project-id
+
+# Deploy the edge function
+supabase functions deploy task-completion-notification
+\`\`\`
+
+### 6. Run the development server
 \`\`\`bash
 npm run dev
 \`\`\`
 
 Open [http://localhost:3000](http://localhost:3000) in your browser!
+
+### 7. Test the Edge Function
+1. Create a card in any list
+2. Drag it to the "Done" list
+3. Check your browser console for the notification message
+4. In production, this would send actual emails/notifications
 
 ## 🎬 YouTube Tutorial Walkthrough
 
