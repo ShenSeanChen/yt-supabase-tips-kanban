@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Plus, MoreHorizontal, Edit2, Trash2, LogOut, User } from 'lucide-react'
+import { Plus, MoreHorizontal, Edit2, Trash2, LogOut, User, Sparkles, Calendar, Clock, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Database } from '@/lib/supabase'
@@ -533,81 +533,147 @@ export default function KanbanBoard() {
     }
   }
 
+  // Helper function to format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Helper function to get list color
+  const getListColor = (title: string) => {
+    switch (title.toLowerCase()) {
+      case 'to do':
+        return 'from-blue-500 to-blue-600'
+      case 'in progress':
+        return 'from-yellow-500 to-orange-500'
+      case 'done':
+        return 'from-green-500 to-emerald-600'
+      default:
+        return 'from-purple-500 to-indigo-600'
+    }
+  }
+
   // ===============================================
   // 🎨 UI COMPONENTS
   // ===============================================
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your boards...</p>
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto pulse-glow"></div>
+            <Sparkles className="w-6 h-6 text-indigo-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="mt-6 text-slate-600 font-medium">Loading your workspace...</p>
+          <p className="text-sm text-slate-500 mt-2">Preparing your boards and cards</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header with User Info (Feature #1: Authentication) */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Kanban Pro</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Enhanced Header with Glass Effect */}
+      <header className="glass border-b border-white/20 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                    Kanban Pro
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium">Powered by Supabase</p>
+                </div>
+              </div>
+              
               {currentBoard && (
-                <div className="ml-8">
-                  <h2 className="text-lg font-medium text-gray-700">{currentBoard.title}</h2>
-                  <p className="text-sm text-gray-500">{currentBoard.description}</p>
+                <div className="hidden md:block">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-800">{currentBoard.title}</h2>
+                      <p className="text-sm text-slate-600">{currentBoard.description}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-gray-600" />
-                <span className="text-sm text-gray-600">{user?.email}</span>
+            
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3 px-4 py-2 bg-white/60 rounded-full border border-white/20">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-sm font-medium text-slate-700">{user?.email}</p>
+                  <p className="text-xs text-slate-500">Online</p>
+                </div>
               </div>
+              
               <button
                 onClick={signOut}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-white/60 rounded-full transition-all duration-200 border border-transparent hover:border-white/20"
               >
                 <LogOut className="w-4 h-4" />
-                Sign Out
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Kanban Board */}
-      <div className="p-6">
+      {/* Enhanced Main Kanban Board */}
+      <div className="p-6 lg:p-8">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-6 overflow-x-auto">
-            {/* Render Each List */}
-            {data.lists.map((list) => (
-              <div key={list.id} className="flex-shrink-0 w-72">
-                <div className="bg-white rounded-lg shadow-sm border">
-                  <div className="p-4 border-b">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-gray-900">{list.title}</h3>
-                      <button className="text-gray-500 hover:text-gray-700">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+          <div className="flex gap-6 overflow-x-auto pb-6">
+            {/* Enhanced List Rendering */}
+            {data.lists.map((list, listIndex) => (
+              <div key={list.id} className="flex-shrink-0 w-80 slide-in-up" style={{ animationDelay: `${listIndex * 0.1}s` }}>
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                  {/* Enhanced List Header */}
+                  <div className={`p-6 bg-gradient-to-r ${getListColor(list.title)} text-white relative overflow-hidden`}>
+                    <div className="absolute inset-0 bg-black/10"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-white/80 rounded-full"></div>
+                          <h3 className="font-bold text-lg">{list.title}</h3>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+                            {data.cards.filter(card => card.list_id === list.id).length}
+                          </span>
+                          <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Droppable area for cards */}
+                  {/* Enhanced Droppable Area */}
                   <Droppable droppableId={list.id}>
                     {(provided, snapshot) => (
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`p-4 min-h-[200px] ${
-                          snapshot.isDraggingOver ? 'bg-blue-50' : ''
+                        className={`p-4 min-h-[300px] transition-all duration-300 ${
+                          snapshot.isDraggingOver 
+                            ? 'bg-gradient-to-b from-blue-50 to-indigo-50 border-2 border-dashed border-indigo-300' 
+                            : 'bg-transparent'
                         }`}
                       >
-                        {/* Render Cards */}
+                        {/* Enhanced Card Rendering */}
                         {data.cards
                           .filter(card => card.list_id === list.id)
                           .map((card, index) => (
@@ -617,32 +683,54 @@ export default function KanbanBoard() {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`mb-3 p-3 bg-white rounded-lg shadow-sm border ${
-                                    snapshot.isDragging ? 'rotate-2 shadow-lg' : ''
+                                  className={`mb-4 group ${
+                                    snapshot.isDragging 
+                                      ? 'rotate-3 scale-105 shadow-2xl z-50' 
+                                      : 'card-hover'
                                   }`}
                                 >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <h4 className="font-medium text-gray-900 mb-1">
-                                        {card.title}
-                                      </h4>
+                                  <div className="bg-white rounded-xl shadow-lg border border-slate-200/60 overflow-hidden">
+                                    <div className="p-5">
+                                      <div className="flex items-start justify-between mb-3">
+                                        <h4 className="font-semibold text-slate-800 leading-snug flex-1 pr-2">
+                                          {card.title}
+                                        </h4>
+                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => deleteCard(card.id)}
+                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                      
                                       {card.description && (
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-slate-600 mb-4 leading-relaxed">
                                           {card.description}
                                         </p>
                                       )}
+                                      
+                                      {/* Enhanced Card Footer */}
+                                      <div className="flex items-center justify-between text-xs text-slate-500">
+                                        <div className="flex items-center space-x-2">
+                                          <Clock className="w-3.5 h-3.5" />
+                                          <span>{formatDate(card.created_at)}</span>
+                                        </div>
+                                        {list.title === 'Done' && (
+                                          <div className="flex items-center space-x-1 text-green-600">
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <span className="font-medium">Complete</span>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1 ml-2">
-                                      <button className="text-gray-500 hover:text-blue-600 p-1">
-                                        <Edit2 className="w-3 h-3" />
-                                      </button>
-                                      <button
-                                        onClick={() => deleteCard(card.id)}
-                                        className="text-gray-500 hover:text-red-600 p-1"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    </div>
+                                    
+                                    {/* Subtle gradient border */}
+                                    <div className={`h-1 bg-gradient-to-r ${getListColor(list.title)} opacity-60`}></div>
                                   </div>
                                 </div>
                               )}
@@ -650,24 +738,28 @@ export default function KanbanBoard() {
                           ))}
                         {provided.placeholder}
                         
-                        {/* Add Card Form */}
-                        <div className="mt-3">
-                          <input
-                            type="text"
-                            placeholder="Add a card..."
-                            value={newCardTitles[list.id] || ''}
-                            onChange={(e) => setNewCardTitles(prev => ({
-                              ...prev,
-                              [list.id]: e.target.value
-                            }))}
-                            onKeyPress={(e) => e.key === 'Enter' && addCard(list.id)}
-                            className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
+                        {/* Enhanced Add Card Form */}
+                        <div className="mt-4">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="✨ Add a new card..."
+                              value={newCardTitles[list.id] || ''}
+                              onChange={(e) => setNewCardTitles(prev => ({
+                                ...prev,
+                                [list.id]: e.target.value
+                              }))}
+                              onKeyPress={(e) => e.key === 'Enter' && addCard(list.id)}
+                              className="w-full p-4 text-sm bg-white/60 border border-slate-200/60 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-400 backdrop-blur-sm"
+                            />
+                            <Plus className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          </div>
+                          
                           {newCardTitles[list.id] && (
-                            <div className="mt-2 flex gap-2">
+                            <div className="mt-3 flex gap-2">
                               <button
                                 onClick={() => addCard(list.id)}
-                                className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
                               >
                                 Add Card
                               </button>
@@ -676,7 +768,7 @@ export default function KanbanBoard() {
                                   ...prev,
                                   [list.id]: ''
                                 }))}
-                                className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300 transition-colors"
+                                className="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -690,59 +782,64 @@ export default function KanbanBoard() {
               </div>
             ))}
             
-            {/* Add New List */}
-            <div className="flex-shrink-0 w-72">
-              <div className="bg-white rounded-lg shadow-sm border p-4">
-                <input
-                  type="text"
-                  placeholder="Add a list..."
-                  value={newListTitle}
-                  onChange={(e) => setNewListTitle(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addList()}
-                  className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {newListTitle && (
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      onClick={addList}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                    >
-                      Add List
-                    </button>
-                    <button
-                      onClick={() => setNewListTitle('')}
-                      className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
+            {/* Enhanced Add New List */}
+            <div className="flex-shrink-0 w-80">
+              <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-dashed border-slate-300 p-6 hover:border-indigo-400 hover:bg-white/80 transition-all duration-300">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <Plus className="w-6 h-6 text-slate-600" />
                   </div>
-                )}
+                  <input
+                    type="text"
+                    placeholder="Add a new list..."
+                    value={newListTitle}
+                    onChange={(e) => setNewListTitle(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addList()}
+                    className="w-full p-3 text-sm bg-white/80 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-center"
+                  />
+                  {newListTitle && (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={addList}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 shadow-lg"
+                      >
+                        Add List
+                      </button>
+                      <button
+                        onClick={() => setNewListTitle('')}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </DragDropContext>
       </div>
 
-      {/* 🎉 Notification Toast (Feature #6: Edge Functions) */}
+      {/* Enhanced Notification Toast */}
       {notification.show && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top duration-300">
-          <div className={`px-6 py-4 rounded-lg shadow-lg border max-w-md ${
+        <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top duration-300">
+          <div className={`px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-sm max-w-md ${
             notification.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-red-50 border-red-200 text-red-800'
+              ? 'bg-emerald-50/90 border-emerald-200 text-emerald-800'
+              : 'bg-red-50/90 border-red-200 text-red-800'
           }`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full ${
-                notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-              }`} />
-              <p className="font-medium text-sm">{notification.message}</p>
+            <div className="flex items-center gap-4">
+              <div className={`w-3 h-3 rounded-full ${
+                notification.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+              } animate-pulse`} />
+              <p className="font-medium text-sm flex-1">{notification.message}</p>
               <button
                 onClick={() => setNotification({ show: false, message: '', type: 'success' })}
-                className={`ml-auto text-lg leading-none ${
+                className={`text-xl leading-none font-bold ${
                   notification.type === 'success' 
-                    ? 'text-green-600 hover:text-green-800'
+                    ? 'text-emerald-600 hover:text-emerald-800'
                     : 'text-red-600 hover:text-red-800'
-                }`}
+                } transition-colors`}
               >
                 ×
               </button>
@@ -752,4 +849,4 @@ export default function KanbanBoard() {
       )}
     </div>
   )
-} 
+}
