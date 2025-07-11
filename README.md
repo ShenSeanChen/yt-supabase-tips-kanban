@@ -1,6 +1,7 @@
 # 🚀 Kanban Pro - Supabase Features Demo
 
 A modern Kanban board built with **Next.js 15** and **Supabase** that showcases the **TOP 6 SUPABASE FEATURES** every developer should know!
+YouTube: https://www.youtube.com/watch?v=Pnoq2tIif3s&list=PLE9hy4A7ZTmpGq7GHf5tgGFWh2277AeDR&index=14
 
 ## 🎯 Top 6 Supabase Features Demonstrated
 
