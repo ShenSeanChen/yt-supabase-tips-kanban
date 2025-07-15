@@ -7,7 +7,7 @@ A modern Kanban board built with **Next.js 15** and **Supabase** that showcases 
 
 🚀 X Post: [X link](https://x.com/ShenSeanChen/status/1941531851299926161)
 
-💻　Launch Full Stack Product: [Github Repo](https://github.com/ShenSeanChen/launch-mvp-stripe-nextjs-supabase)
+💻 Launch Full Stack Product: [Github Repo](https://github.com/ShenSeanChen/launch-mvp-stripe-nextjs-supabase)
 
 ☕️ Buy me a coffee: [Cafe Latte](https://buy.stripe.com/5kA176bA895ggog4gh)
 
