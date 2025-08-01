@@ -11,6 +11,8 @@ A modern Kanban board built with **Next.js 15** and **Supabase** that showcases 
 
 ☕️ Buy me a coffee: [Cafe Latte](https://buy.stripe.com/5kA176bA895ggog4gh)
 
+🤖️ Discord: [Invite link](https://discord.com/invite/TKKPzZheua)
+
 ## 🎯 Top 6 Supabase Features Demonstrated
 
 ### 1. **🔐 Authentication with OAuth**
